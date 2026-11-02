@@ -12,7 +12,13 @@ import { createSnowboardBinding } from '../createSnowboardBinding';
 import { createSkiBinding } from '../createSkiBinding';
 import { createBootLast } from '../createBootLast';
 import { createRiderFigure, type RiderFigure } from '../createRiderFigure';
+import { FemaleRider } from './FemaleRider';
 import type { UIState } from '../app/types';
+
+interface FemalePoseCtx {
+  rig: THREE.Group; gear: 'board' | 'skis';
+  front: THREE.Object3D; back: THREE.Object3D;
+}
 
 interface StrapRef { node: THREE.Object3D; home: THREE.Vector3; name: string }
 
@@ -27,6 +33,8 @@ export class SceneManager {
   private state: UIState | null = null;
   private structuralKey = '';
   private rider: RiderFigure | null = null;
+  private female: FemaleRider | null = null;
+  private femalePose: FemalePoseCtx | null = null;
   private carveRig: THREE.Group | null = null;
   private straps: StrapRef[] = [];
   onStats: ((tris: number) => void) | null = null;
@@ -70,6 +78,14 @@ export class SceneManager {
     this.scene.add(this.lines);
     this.scene.add(this.stage);
 
+    // The game's real female rider (user instruction 2026-11-03): load
+    // async, swap her in when she arrives if a wear/glide view is up.
+    FemaleRider.load('assets/female-rider.glb').then((r) => {
+      this.female = r;
+      r.group.traverse((m) => { if ((m as THREE.Mesh).isMesh) m.castShadow = true; });
+      if (this.state && (this.state.view === 'wear' || this.state.view === 'glide')) this.rebuild();
+    }).catch((e) => console.warn('female rider load failed, keeping figure', e));
+
     addEventListener('resize', () => {
       this.camera.aspect = innerWidth / innerHeight;
       this.camera.updateProjectionMatrix();
@@ -112,6 +128,7 @@ export class SceneManager {
     const rig = new THREE.Group();
     this.carveRig = new THREE.Group();
     rig.add(this.carveRig);
+    const bindings: THREE.Object3D[] = [];
     if (s.gear === 'board') {
       const board = createSwallowtailBoard(this.boardOpts());
       board.position.y = 0.0055;
@@ -121,11 +138,8 @@ export class SceneManager {
         b.position.set(0, 0.016, z);
         b.rotation.y = ang;
         this.carveRig.add(b);
+        bindings.push(b);
       }
-      this.rider = createRiderFigure('board');
-      this.rider.group.rotation.y = Math.PI / 2 + 0.04;
-      this.rider.group.position.set(0, 0.16, 0.128);
-      this.carveRig.add(this.rider.group);
     } else {
       const skis = createSkis(this.skiOpts());
       skis.position.y = 0.006;
@@ -134,7 +148,29 @@ export class SceneManager {
         const b = createSkiBinding({ accentColor: s.colors.acc });
         b.position.set(sx * 0.125, 0.0155, 0);
         this.carveRig.add(b);
+        bindings.push(b);
       }
+    }
+    if (this.female) {
+      // Real game character (user instruction): yaw her measured facing
+      // onto the gear, IK-pose her onto the bindings.
+      const f = this.female.forward;
+      if (s.gear === 'board') {
+        this.female.group.rotation.y = Math.atan2(f.z, f.x); // facing -> +x (toe edge)
+        this.female.group.position.set(0, 0, 0.128);
+      } else {
+        this.female.group.rotation.y = Math.atan2(f.x, -f.z); // facing -> -z (tips)
+        this.female.group.position.set(0, 0, 0.02);
+      }
+      this.carveRig.add(this.female.group);
+      this.femalePose = { rig, gear: s.gear, front: bindings[0], back: bindings[1] };
+      this.solveFemale(0);
+    } else if (s.gear === 'board') {
+      this.rider = createRiderFigure('board');
+      this.rider.group.rotation.y = Math.PI / 2 + 0.04;
+      this.rider.group.position.set(0, 0.16, 0.128);
+      this.carveRig.add(this.rider.group);
+    } else {
       this.rider = createRiderFigure('ski');
       this.rider.group.rotation.y = Math.PI;
       this.rider.group.position.set(0, 0.05, 0.055);
@@ -143,10 +179,39 @@ export class SceneManager {
     return rig;
   }
 
+  /** Pose the female rider onto the current bindings (t = glide time). */
+  private solveFemale(t: number) {
+    const ctx = this.femalePose, r = this.female;
+    if (!ctx || !r) return;
+    ctx.rig.updateMatrixWorld(true);
+    const board = ctx.gear === 'board';
+    const gliding = this.state!.view === 'glide';
+    const ankleOf = (b: THREE.Object3D) => b.localToWorld(new THREE.Vector3(0, board ? 0.115 : 0.125, board ? 0.005 : -0.01));
+    const frontA = ankleOf(ctx.front), backA = ankleOf(ctx.back);
+    const hips = frontA.clone().add(backA).multiplyScalar(0.5);
+    const leg = r.legLength();
+    hips.y += leg * (board ? 0.87 : 0.95);
+    if (board) { hips.x += 0.02; hips.z += 0.02; }
+    if (gliding) {
+      hips.y += Math.sin(t * 2.2) * 0.012 - 0.015;
+      if (board) hips.z += Math.sin(t * 1.6) * 0.03; else hips.x += Math.sin(t * 1.6) * 0.02;
+    }
+    const groupQ = r.group.getWorldQuaternion(new THREE.Quaternion());
+    r.pose({
+      frontAnkle: frontA, backAnkle: backA, hips,
+      hipsTwist: board ? 0.55 + (gliding ? Math.sin(t * 1.6) * 0.05 : 0) : 0,
+      lean: board ? 0.14 : 0.10,
+      footQuat: (front) => groupQ.clone()
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), board ? (front ? 0.15 : -0.08) : 0))
+        .multiply(r.bindFootQuat(front)),
+      armSpread: board ? 0.7 : 0.35,
+    });
+  }
+
   private rebuild() {
     const s = this.state!;
     while (this.stage.children.length) this.stage.remove(this.stage.children[0]);
-    this.rider = null; this.carveRig = null;
+    this.rider = null; this.carveRig = null; this.femalePose = null;
     let obj: THREE.Object3D;
     if (s.view === 'solo') {
       obj = s.gear === 'board' ? createSwallowtailBoard(this.boardOpts()) : createSkis(this.skiOpts());
@@ -235,8 +300,9 @@ export class SceneManager {
   private tick() {
     const t = this.clock.getElapsedTime();
     const s = this.state;
-    if (s && s.view === 'glide' && this.rider) {
-      this.rider.glide(t);
+    if (s && s.view === 'glide' && (this.rider || this.femalePose)) {
+      if (this.rider) this.rider.glide(t);
+      if (this.femalePose) this.solveFemale(t);
       if (this.carveRig) {
         if (s.gear === 'board') this.carveRig.rotation.z = Math.sin(t * 1.6) * 0.09;
         else { this.carveRig.rotation.z = Math.sin(t * 1.6) * 0.045; this.carveRig.position.x = Math.sin(t * 1.6) * 0.02; }
