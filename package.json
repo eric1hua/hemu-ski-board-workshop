@@ -1,0 +1,8 @@
+{
+  "name": "hemu-ski-board-workshop",
+  "private": true,
+  "version": "21.0.0",
+  "type": "module",
+  "scripts": { "build": "bash build.sh" },
+  "dependencies": { "react": "^18.3.1", "react-dom": "^18.3.1" }
+}

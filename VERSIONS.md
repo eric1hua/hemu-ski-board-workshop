@@ -24,3 +24,4 @@
 | v18 | 颜色/图案面板全视图生效（着装/滑行同步）+ URL 参数可直达配色 | 黑黄条纹穿戴、蓝白斜纹单查均生效 |
 | v19 | 绑带拆开在穿戴视图验证；双板固定器改侧视相机；靴占位踝筒收短；小屏面板适配 | 绑带抬升分离干净 |
 | v20 | 终检全矩阵截图 + README + 发布 GitHub Pages | 见仓库 renders 外的线上页（发布后以线上截图为准） |
+| v21 | **交互界面 React 化**（用户要求，便于模块化维护）：状态归 React（`src/app/` 组件 Toolbar/ControlPanel + `types.ts` 状态定义），three.js 全部收进 `src/scene/SceneManager.ts` 与 UI 解耦；esbuild 打包 production React（174 KB），three 仍走 vendored importmap，Pages 部署方式不变 | 回归截图 solo/wear/glide/binding 与 v20 一致，面板统计行随 React 状态实时更新 |

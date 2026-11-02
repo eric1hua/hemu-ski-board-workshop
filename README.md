@@ -24,6 +24,12 @@
 
 `src/` 是 TypeScript 源码（事实源），`lib/` 是 esbuild 打好的 JS（审查页直接引用，改源码后跑 `bash build.sh` 重新生成）。
 
+审查页架构（v21 起 React 化，便于模块化维护）：
+
+- `src/app/` — React 界面层：`types.ts`（UI 状态与规格文案）、`App.tsx`（状态管理）、`components/Toolbar.tsx`（单板/双板与视图切换）、`components/ControlPanel.tsx`（颜色/图案/开关面板）。
+- `src/scene/SceneManager.ts` — three.js 场景层：渲染、装配、滑行动画、相机帧位，完全不碰 DOM；React 把状态推给它，结构性变化（装备/视图/配色）才重建场景，绑带/靴子/旋转等轻变化原地应用。
+- `src/create*.ts` — 资产工厂（见下表），与页面无关，游戏可直接引用。
+
 ## 一切尺寸从游戏人物量出来（src/riderSpec.ts）
 
 - 两名角色按躯干等大（Hips→Head 0.591 m）；含帽/耳总高约 1.80（女）/ 1.87（男）。
