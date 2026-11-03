@@ -32,11 +32,11 @@ export interface SwallowtailBoardOptions {
   /** Board length, m. Default GAME_BOARD_LENGTH (1.70) — fixed by the game's
    *  rider height; override only for lab comparisons. */
   length?: number;
-  /** Widest width, at the nose, m. Default 0.500. */
+  /** Widest width, at the nose, m. Default 0.560. */
   noseWidth?: number;
-  /** Waist (narrowest) width, m. Default 0.460. */
+  /** Waist (narrowest) width, m. Default 0.467. */
   waistWidth?: number;
-  /** Width just before the swallowtail split, m. Default 0.490. */
+  /** Width just before the swallowtail split, m. Default 0.496. */
   tailWidth?: number;
   /** Core thickness at the waist, m. Default 0.009. */
   thickness?: number;
@@ -77,11 +77,11 @@ export const GAME_BOARD_LENGTH = 1.7;
 
 const DEFAULTS: Required<SwallowtailBoardOptions> = {
   length: GAME_BOARD_LENGTH,
-  noseWidth: 0.500,
-  waistWidth: 0.460,
-  tailWidth: 0.490,
+  noseWidth: 0.560,
+  waistWidth: 0.467,
+  tailWidth: 0.496,
   thickness: 0.009,
-  notchDepth: 0.21,
+  notchDepth: 0.22,
   topsheetColor: '#f2f2f0',
   pattern: 'none',
   patternColor: '#d82f2a',
@@ -109,20 +109,32 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
 
 function halfWidthAt(t: number, o: typeof DEFAULTS): number {
   const n = o.noseWidth / 2, w = o.waistWidth / 2, tl = o.tailWidth / 2;
+  const tApex = 1 - o.notchDepth / o.length;
+  // Control points measured off the reference product photo (Korua Dart,
+  // pixel-scanned 2026-11-03): max width at t~0.16, waist plateau
+  // 0.833 of max at t~0.58-0.66, tail re-widening to 0.885 at the notch
+  // apex, then prong outer edges tapering to 0.72 of tail width.
   const pts: Array<[number, number]> = [
-    [0.0, 0.002],
-    [0.05, n * 0.635],
-    [0.10, n * 0.876],
-    [0.16, n * 0.985],
-    [0.22, n],
-    [0.32, w + (n - w) * 0.55],
-    [0.45, w + (n - w) * 0.22],
-    [0.58, w * 1.005],
+    [0.0, 0.004],
+    [0.02, n * 0.36],
+    [0.05, n * 0.62],
+    [0.08, n * 0.80],
+    [0.10, n * 0.879],
+    [0.16, n],
+    [0.22, n * 0.996],
+    [0.30, n * 0.942],
+    [0.38, n * 0.890],
+    [0.45, w * 1.035],
+    [0.55, w * 1.004],
     [0.66, w],
-    [0.78, w + (tl - w) * 0.25],
-    [0.88, w + (tl - w) * 0.62],
-    [0.95, tl * 0.99],
-    [1.0, tl],
+    [0.74, w * 1.006],
+    [0.80, w + (tl - w) * 0.30],
+    [0.85, tl * 0.985],
+    [tApex, tl],
+    [0.90, tl * 0.97],
+    [0.95, tl * 0.90],
+    [0.98, tl * 0.80],
+    [1.0, tl * 0.70],
   ];
   if (t <= pts[0][0]) return pts[0][1];
   for (let i = 1; i < pts.length; i++) {
@@ -160,7 +172,9 @@ function notchHalfAt(t: number, o: typeof DEFAULTS): number {
   const tApex = 1 - o.notchDepth / o.length;
   if (t <= tApex) return 0;
   const u = (t - tApex) / (1 - tApex);
-  return 0.42 * (o.tailWidth / 2) * u;
+  // Reference scan: the V gap's half-width reaches ~0.50 of the tail
+  // half-width at the tail end (fat paddles at 0.42 read wrong).
+  return 0.50 * (o.tailWidth / 2) * u;
 }
 
 // ---------------------------------------------------------------------------
