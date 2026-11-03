@@ -90,6 +90,12 @@ export function ControlPanel(props: {
           <label htmlFor="show-base">查看板底</label>
         </div>
       )}
+      {s.gear === 'skis' && s.view === 'solo' && (
+        <div className="row">
+          <input type="checkbox" id="game-compare" checked={s.gameCompare} onChange={(e) => props.onChange({ gameCompare: e.target.checked })} />
+          <label htmlFor="game-compare">游戏内板对照（1.40 m）</label>
+        </div>
+      )}
       <div className="row">
         <input type="checkbox" id="spin" checked={s.spin} onChange={(e) => props.onChange({ spin: e.target.checked })} />
         <label htmlFor="spin">自动旋转（360°）</label>

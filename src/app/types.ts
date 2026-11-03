@@ -19,6 +19,8 @@ export interface UIState extends GearStyle {
   spin: boolean;
   boot: boolean;
   showBase: boolean;
+  /** Skis solo only: stand the game's own 1.40 m pair beside ours. */
+  gameCompare: boolean;
   ankle: boolean;
   toe: boolean;
   detach: boolean;
@@ -36,6 +38,7 @@ export const DEFAULT_STATE: UIState = {
   spin: true,
   boot: false,
   showBase: false,
+  gameCompare: false,
   ankle: true,
   toe: true,
   detach: false,
@@ -59,6 +62,7 @@ export function stateFromURL(q: URLSearchParams): UIState {
   for (const [param, key] of Object.entries(map)) { const v = q.get(param); if (v) s.colors[key] = v; }
   if (q.get('spin') === '0') s.spin = false;
   if (q.get('boot') === '1') s.boot = true;
+  if (q.get('game') === '1') s.gameCompare = true;
   if (q.get('detach') === '1') s.detach = true;
   return s;
 }

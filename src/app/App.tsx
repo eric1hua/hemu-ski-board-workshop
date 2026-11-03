@@ -6,7 +6,7 @@ import { SceneManager } from '../scene/SceneManager';
 import { Toolbar } from './components/Toolbar';
 import { ControlPanel } from './components/ControlPanel';
 
-export const VERSION = 'v35';
+export const VERSION = 'v36';
 
 type Preview = Omit<UIState, keyof GearStyle>;
 

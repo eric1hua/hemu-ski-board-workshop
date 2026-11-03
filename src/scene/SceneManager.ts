@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createSwallowtailBoard } from '../createSwallowtailBoard';
 import { createSkis } from '../createSkis';
+import { createGameSkis } from '../gameSki';
 import { createSnowboardBinding } from '../createSnowboardBinding';
 import { createSkiBinding } from '../createSkiBinding';
 import { createBootLast } from '../createBootLast';
@@ -97,7 +98,7 @@ export class SceneManager {
 
   /** Push a new UI state. Rebuilds only when the structural key changes. */
   setState(s: UIState) {
-    const key = [s.gear, s.view, s.view === 'solo' && s.boot, s.showBase, s.pattern, s.colors.top, s.colors.base, s.colors.pat, s.colors.pat2, s.colors.acc, s.tailColors.top, s.tailColors.base, s.noseSticker, s.noseStickerColor, s.noseName].join('|');
+    const key = [s.gear, s.view, s.view === 'solo' && s.boot, s.showBase, s.gameCompare, s.pattern, s.colors.top, s.colors.base, s.colors.pat, s.colors.pat2, s.colors.acc, s.tailColors.top, s.tailColors.base, s.noseSticker, s.noseStickerColor, s.noseName].join('|');
     this.state = s;
     if (key !== this.structuralKey) {
       this.structuralKey = key;
@@ -217,6 +218,16 @@ export class SceneManager {
       obj = mounted;
     } else if (s.view === 'solo') {
       obj = s.gear === 'board' ? createSwallowtailBoard(boardOptions(s)) : createSkis(skiOptions(s));
+      if (s.gear === 'skis' && s.gameCompare) {
+        // The game's own pair beside ours, centres aligned: the 30 cm
+        // length difference reads directly off both ends.
+        const wrap = new THREE.Group();
+        wrap.add(obj);
+        const game = createGameSkis();
+        game.position.x = 0.62;
+        wrap.add(game);
+        obj = wrap;
+      }
     } else if (s.view === 'binding') {
       const wrap = new THREE.Group();
       if (s.gear === 'board') {
