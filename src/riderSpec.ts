@@ -37,7 +37,8 @@ export const RIDER = {
   skiStance: 0.125,
 } as const;
 
-/** Fixed snowboard length for the game, m. */
-export const SNOWBOARD_LENGTH = 1.6;
+/** Fixed snowboard length for the game, m. Anchored on the female rider
+ *  (1.80 - 0.10), user decision 2026-11-03. */
+export const SNOWBOARD_LENGTH = 1.7;
 /** Fixed ski length for the game, m. */
 export const SKI_LENGTH = 1.7;

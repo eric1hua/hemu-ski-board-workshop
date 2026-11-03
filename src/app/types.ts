@@ -46,11 +46,11 @@ export function stateFromURL(q: URLSearchParams): UIState {
 }
 
 export const SPECS: Record<string, string> = {
-  solo_board: '燕尾粉雪单板\n长 1600 · 头 330 / 腰 274 / 尾 302 mm\n面板可换色/换图案，零贴图',
+  solo_board: '燕尾粉雪单板\n长 1700 · 头 330 / 腰 274 / 尾 302 mm\n面板可换色/换图案，零贴图',
   solo_skis: '全山双板（一对）\n长 1700 · 132 / 105 / 118 mm · 站距 250',
   binding_board: '单板固定器（单只）\n适配游戏靴 170×330 · 内宽 190\n踝带/趾带独立可拆（右侧开关）',
   binding_skis: '双板固定器（单只）\n适配鞋底 340 · 站高 35 · 刹车宽 145',
-  wear_board: '穿戴：hemu-ski 女性角色原模型 + 单板\n按游戏 1.80 身高 · IK 站上固定器\n站距 512 · 前 +15° / 后 −9°',
+  wear_board: '穿戴：hemu-ski 女性角色原模型 + 单板\n按游戏 1.80 身高 · IK 站上固定器\n站距 544 · 前 +15° / 后 −9°',
   wear_skis: '穿戴：人物 + 双板 + 固定器\n双脚平行 · 鞋头朝板头',
   glide_board: '原地滑行：单板压刃摇摆\n人物关节 + 整板滚转 + 地面速度线',
   glide_skis: '原地滑行：双板平行滑行\n膝踝弹簧 + 身体微摆 + 速度线',

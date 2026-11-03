@@ -133,7 +133,7 @@ export class SceneManager {
       const board = createSwallowtailBoard(this.boardOpts());
       board.position.y = 0.0055;
       this.carveRig.add(board);
-      for (const [z, ang] of [[-0.128, Math.PI / 2 + 0.18], [0.384, Math.PI / 2 - 0.10]] as const) {
+      for (const [z, ang] of [[-0.136, Math.PI / 2 + 0.18], [0.408, Math.PI / 2 - 0.10]] as const) {
         const b = createSnowboardBinding({ accentColor: s.colors.acc });
         b.position.set(0, 0.016, z);
         b.rotation.y = ang;
@@ -157,7 +157,7 @@ export class SceneManager {
       const f = this.female.forward;
       if (s.gear === 'board') {
         this.female.group.rotation.y = Math.atan2(f.z, f.x); // facing -> +x (toe edge)
-        this.female.group.position.set(0, 0, 0.128);
+        this.female.group.position.set(0, 0, 0.136);
       } else {
         this.female.group.rotation.y = Math.atan2(f.x, -f.z); // facing -> -z (tips)
         this.female.group.position.set(0, 0, 0.02);
@@ -168,7 +168,7 @@ export class SceneManager {
     } else if (s.gear === 'board') {
       this.rider = createRiderFigure('board');
       this.rider.group.rotation.y = Math.PI / 2 + 0.04;
-      this.rider.group.position.set(0, 0.16, 0.128);
+      this.rider.group.position.set(0, 0.16, 0.136);
       this.carveRig.add(this.rider.group);
     } else {
       this.rider = createRiderFigure('ski');

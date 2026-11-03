@@ -4,9 +4,10 @@
 // structural rules settled with the user (2026-11-03):
 //
 //   - Board length is FIXED: the game's riders have a fixed height
-//     (1.7-1.8 m class, bodies sized alike by trunk), board = height - 0.10.
-//     See GAME_BOARD_LENGTH. Shape variants differ in width / notch / rocker
-//     only, never in length.
+//     (bodies sized alike by trunk), board = height - 0.10. Anchor chosen
+//     by the user 2026-11-03 (option A): the female rider, 1.80 - 0.10 =
+//     1.70 m. See GAME_BOARD_LENGTH. Shape variants differ in width /
+//     notch / rocker only, never in length.
 //   - NO TEXTURES, anywhere. Every surface is a flat colour, and a board's
 //     graphic is ABSTRACT GEOMETRY: thin pattern layers tessellated from the
 //     same grid as the deck, floating 0.7 mm above it in a contrasting flat
@@ -28,7 +29,7 @@ import * as THREE from 'three';
 export type BoardPattern = 'none' | 'lengthStripes' | 'diagonal' | 'chevrons' | 'split' | 'blocks';
 
 export interface SwallowtailBoardOptions {
-  /** Board length, m. Default GAME_BOARD_LENGTH (1.60) — fixed by the game's
+  /** Board length, m. Default GAME_BOARD_LENGTH (1.70) — fixed by the game's
    *  rider height; override only for lab comparisons. */
   length?: number;
   /** Widest width, at the nose, m. Default 0.330. */
@@ -68,10 +69,11 @@ export interface SwallowtailBoardOptions {
 }
 
 /** The game's riders are sized alike (their bodies share one trunk length,
- *  0.591 m; whole-model heights land in the 1.7-1.8 m class including hats
- *  and ears). Board length follows the rider, not a sizing chart:
- *  board = height - 0.10 m, one fixed length for every board in the game. */
-export const GAME_BOARD_LENGTH = 1.6;
+ *  0.591 m; the female specs 1.80 m overall, the male ~1.87 m including
+ *  hair). Board length follows the rider, not a sizing chart:
+ *  board = height - 0.10 m, anchored on the female rider (user decision,
+ *  2026-11-03): 1.80 - 0.10 = 1.70 m, one fixed length for every board. */
+export const GAME_BOARD_LENGTH = 1.7;
 
 const DEFAULTS: Required<SwallowtailBoardOptions> = {
   length: GAME_BOARD_LENGTH,
