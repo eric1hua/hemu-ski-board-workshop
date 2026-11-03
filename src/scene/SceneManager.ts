@@ -1,8 +1,8 @@
 // SceneManager — all three.js work for the workshop review page, decoupled
 // from the UI. React owns UIState and pushes it here; this class owns the
 // renderer, the stage, and the glide animation loop. Structural changes
-// (gear / view / colours / pattern) rebuild the stage; light changes
-// (straps, boot last, spin) apply in place.
+// (gear / view / colours / pattern / solo boot preview) rebuild the stage; light changes
+// (straps, standalone boot last, spin) apply in place.
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -96,7 +96,7 @@ export class SceneManager {
 
   /** Push a new UI state. Rebuilds only when the structural key changes. */
   setState(s: UIState) {
-    const key = [s.gear, s.view, s.pattern, s.colors.top, s.colors.base, s.colors.pat, s.colors.pat2, s.colors.acc].join('|');
+    const key = [s.gear, s.view, s.view === 'solo' && s.boot, s.showBase, s.pattern, s.colors.top, s.colors.base, s.colors.pat, s.colors.pat2, s.colors.acc, s.tailColors.top, s.tailColors.base, s.noseSticker, s.noseStickerColor, s.noseName].join('|');
     this.state = s;
     if (key !== this.structuralKey) {
       this.structuralKey = key;
@@ -109,6 +109,9 @@ export class SceneManager {
     const c = this.state!.colors;
     return {
       topsheetColor: c.top, baseColor: c.base,
+      topsheetTailColor: this.state!.tailColors.top,
+      baseTailColor: this.state!.tailColors.base,
+      noseSticker: this.state!.noseSticker, noseStickerColor: this.state!.noseStickerColor, noseName: this.state!.noseName,
       pattern: this.state!.pattern, patternColor: c.pat, patternColor2: c.pat2,
       basePattern: this.state!.pattern === 'none' ? 'none' as const : 'lengthStripes' as const,
       basePatternColor: c.top,
@@ -118,9 +121,39 @@ export class SceneManager {
     const c = this.state!.colors;
     return {
       topsheetColor: c.top === '#f2f2f0' ? '#2f5d8a' : c.top,
+      topsheetTailColor: this.state!.tailColors.top,
+      baseTailColor: this.state!.tailColors.base,
       baseColor: c.base, stripeColor: c.pat,
       accentColor: c.pat2 === '#17171a' ? '#f2a7b9' : c.pat2,
     };
+  }
+
+  private buildMountedGear(group: THREE.Group) {
+    const s = this.state!;
+    const bindings: THREE.Object3D[] = [];
+    if (s.gear === 'board') {
+      const board = createSwallowtailBoard(this.boardOpts());
+      board.position.y = 0.0055;
+      group.add(board);
+      for (const [z, ang] of [[-0.136, Math.PI / 2 + 0.18], [0.408, Math.PI / 2 - 0.10]] as const) {
+        const b = createSnowboardBinding({ accentColor: s.colors.acc });
+        b.position.set(0, 0.016, z);
+        b.rotation.y = ang;
+        group.add(b);
+        bindings.push(b);
+      }
+    } else {
+      const skis = createSkis(this.skiOpts());
+      skis.position.y = 0.006;
+      group.add(skis);
+      for (const sx of [-1, 1]) {
+        const b = createSkiBinding({ accentColor: s.colors.acc });
+        b.position.set(sx * 0.125, 0.0155, 0);
+        group.add(b);
+        bindings.push(b);
+      }
+    }
+    return bindings;
   }
 
   private buildWear(): THREE.Group {
@@ -128,29 +161,7 @@ export class SceneManager {
     const rig = new THREE.Group();
     this.carveRig = new THREE.Group();
     rig.add(this.carveRig);
-    const bindings: THREE.Object3D[] = [];
-    if (s.gear === 'board') {
-      const board = createSwallowtailBoard(this.boardOpts());
-      board.position.y = 0.0055;
-      this.carveRig.add(board);
-      for (const [z, ang] of [[-0.136, Math.PI / 2 + 0.18], [0.408, Math.PI / 2 - 0.10]] as const) {
-        const b = createSnowboardBinding({ accentColor: s.colors.acc });
-        b.position.set(0, 0.016, z);
-        b.rotation.y = ang;
-        this.carveRig.add(b);
-        bindings.push(b);
-      }
-    } else {
-      const skis = createSkis(this.skiOpts());
-      skis.position.y = 0.006;
-      this.carveRig.add(skis);
-      for (const sx of [-1, 1]) {
-        const b = createSkiBinding({ accentColor: s.colors.acc });
-        b.position.set(sx * 0.125, 0.0155, 0);
-        this.carveRig.add(b);
-        bindings.push(b);
-      }
-    }
+    const bindings = this.buildMountedGear(this.carveRig);
     if (this.female) {
       // Real game character (user instruction): yaw her measured facing
       // onto the gear, IK-pose her onto the bindings.
@@ -217,7 +228,16 @@ export class SceneManager {
     while (this.stage.children.length) this.stage.remove(this.stage.children[0]);
     this.rider = null; this.carveRig = null; this.femalePose = null;
     let obj: THREE.Object3D;
-    if (s.view === 'solo') {
+    if (s.view === 'solo' && s.boot) {
+      const mounted = new THREE.Group();
+      const board = s.gear === 'board';
+      for (const binding of this.buildMountedGear(mounted)) {
+        const boot = createBootLast(board ? 'board' : 'ski');
+        boot.position.y = board ? 0.026 : 0.045;
+        binding.add(boot);
+      }
+      obj = mounted;
+    } else if (s.view === 'solo') {
       obj = s.gear === 'board' ? createSwallowtailBoard(this.boardOpts()) : createSkis(this.skiOpts());
     } else if (s.view === 'binding') {
       const wrap = new THREE.Group();
@@ -238,6 +258,14 @@ export class SceneManager {
     } else {
       obj = this.buildWear();
     }
+    const showingBase = s.view === 'solo' && s.showBase;
+    if (showingBase) {
+      const flipped = new THREE.Group();
+      flipped.position.y = new THREE.Box3().setFromObject(obj).max.y;
+      flipped.rotation.z = Math.PI;
+      flipped.add(obj);
+      obj = flipped;
+    }
     this.stage.add(obj);
     this.straps = [];
     obj.traverse((n) => {
@@ -249,6 +277,7 @@ export class SceneManager {
     // camera framing
     let dir: [number, number, number] | undefined;
     if (s.view === 'wear' || s.view === 'glide') dir = s.gear === 'board' ? [1.25, 0.6, 0.85] : [0.8, 0.6, -1.2];
+    if (showingBase) dir = [0.65, 1.55, 0.8];
     if (s.view === 'binding' && s.gear === 'skis') dir = [1.35, 0.5, 0.35];
     this.frame(obj, s.view === 'binding' ? 1.5 : 1, dir);
   }

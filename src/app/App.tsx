@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { Gear, UIState } from './types';
+import type { Gear, GradientSurface, UIState } from './types';
 import { stateFromURL } from './types';
 import { SceneManager } from '../scene/SceneManager';
 import { Toolbar } from './components/Toolbar';
@@ -24,7 +24,19 @@ export function App() {
 
   const patch = (p: Partial<UIState>) => setState((s) => ({ ...s, ...p }));
   const setColor = (key: keyof UIState['colors'], value: string) =>
-    setState((s) => ({ ...s, colors: { ...s.colors, [key]: value } }));
+    setState((s) => ({
+      ...s,
+      ...(key === 'base' ? { view: 'solo' as const, showBase: true } : {}),
+      ...(key === 'top' && s.tailColors.top && s.showBase ? { showBase: false } : {}),
+      colors: { ...s.colors, [key]: value },
+    }));
+  const setTailColor = (surface: GradientSurface, value?: string) =>
+    setState((s) => ({
+      ...s,
+      view: 'solo',
+      showBase: surface === 'base',
+      tailColors: { ...s.tailColors, [surface]: value },
+    }));
   const setGear = (gear: Gear) => setState((s) => {
     // sensible default topsheet per gear (white board / blue skis)
     const colors = { ...s.colors };
@@ -36,8 +48,8 @@ export function App() {
   return (
     <>
       <canvas id="c" ref={canvasRef} />
-      <Toolbar gear={state.gear} view={state.view} onGear={setGear} onView={(view) => patch({ view })} />
-      <ControlPanel state={state} tris={tris} version={VERSION} onChange={patch} onColor={setColor} />
+      <Toolbar gear={state.gear} view={state.view} onGear={setGear} onView={(view) => patch({ view, showBase: false })} />
+      <ControlPanel state={state} tris={tris} version={VERSION} onChange={patch} onColor={setColor} onTailColor={setTailColor} />
       <div id="hint">拖动旋转 · 滚轮缩放 · 右键平移</div>
     </>
   );

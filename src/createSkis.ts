@@ -10,6 +10,7 @@
 // nose toward -z, each ski offset by RIDER.skiStance. Only dependency: three.
 
 import * as THREE from 'three';
+import { applySurfaceGradient } from './surfaceGradient';
 import { RIDER, SKI_LENGTH } from './riderSpec';
 
 export interface SkiOptions {
@@ -22,6 +23,8 @@ export interface SkiOptions {
   stripeColor?: string;
   accentColor?: string;
   baseColor?: string;
+  topsheetTailColor?: string;
+  baseTailColor?: string;
   sidewallColor?: string;
   segments?: [number, number];
   castShadow?: boolean;
@@ -164,8 +167,11 @@ export function createSki(options: SkiOptions = {}): THREE.Group {
   const wall = new THREE.Mesh(sidewall(grid), flat(o.sidewallColor, 0.62));
   wall.material.side = THREE.DoubleSide;
   g.add(wall);
-  g.add(new THREE.Mesh(surface(grid, 1), flat(o.topsheetColor)));
-  g.add(new THREE.Mesh(surface(grid, -1), flat(o.baseColor, 0.32)));
+  const top = new THREE.Mesh(surface(grid, 1), flat(o.topsheetColor));
+  const base = new THREE.Mesh(surface(grid, -1), flat(o.baseColor, 0.32));
+  applySurfaceGradient(top, options.topsheetTailColor);
+  applySurfaceGradient(base, options.baseTailColor);
+  g.add(top, base);
   const stripe = inlay(grid, (x) => Math.abs(x) < 0.011);
   if (stripe) { const m = new THREE.Mesh(stripe, flat(o.stripeColor)); m.name = 'stripe'; g.add(m); }
   const accents = inlay(grid, (x, t) => (t > 0.07 && t < 0.13 && Math.abs(x) < 0.02) || (t > 0.86 && t < 0.9 && Math.abs(x) < 0.02));

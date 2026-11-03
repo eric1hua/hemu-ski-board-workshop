@@ -5,15 +5,26 @@
 
 export type Gear = 'board' | 'skis';
 export type View = 'solo' | 'binding' | 'wear' | 'glide';
-export type Pattern = 'none' | 'lengthStripes' | 'diagonal' | 'chevrons' | 'split' | 'blocks';
+import { BOARD_PATTERNS, type WorkshopPattern } from '../boardPatterns';
+
+import { NOSE_STICKERS, type NoseSticker } from '../noseStickers';
+
+export type Pattern = WorkshopPattern;
+
+export type GradientSurface = 'top' | 'base';
 
 export interface UIState {
   gear: Gear;
   view: View;
   pattern: Pattern;
+  noseSticker: NoseSticker;
+  noseStickerColor: string;
+  noseName: string;
   colors: { top: string; base: string; pat: string; pat2: string; acc: string };
+  tailColors: Partial<Record<GradientSurface, string>>;
   spin: boolean;
   boot: boolean;
+  showBase: boolean;
   ankle: boolean;
   toe: boolean;
   detach: boolean;
@@ -23,9 +34,14 @@ export const DEFAULT_STATE: UIState = {
   gear: 'board',
   view: 'solo',
   pattern: 'none',
+  noseSticker: 'none',
+  noseStickerColor: '#17171a',
+  noseName: '',
   colors: { top: '#f2f2f0', base: '#d82f2a', pat: '#d82f2a', pat2: '#17171a', acc: '#c9ccd1' },
+  tailColors: {},
   spin: true,
   boot: false,
+  showBase: false,
   ankle: true,
   toe: true,
   detach: false,
@@ -36,7 +52,10 @@ export function stateFromURL(q: URLSearchParams): UIState {
   const s: UIState = { ...DEFAULT_STATE, colors: { ...DEFAULT_STATE.colors } };
   const gear = q.get('gear'); if (gear === 'board' || gear === 'skis') s.gear = gear;
   const view = q.get('view'); if (view === 'solo' || view === 'binding' || view === 'wear' || view === 'glide') s.view = view;
-  const pat = q.get('pattern'); if (pat) s.pattern = pat as Pattern;
+  const pat = BOARD_PATTERNS.find(([id]) => id === q.get('pattern'));
+  if (pat) s.pattern = pat[0];
+  const sticker = NOSE_STICKERS.find(([id]) => id === q.get('sticker'));
+  if (sticker) s.noseSticker = sticker[0];
   const map: Record<string, keyof UIState['colors']> = { ctop: 'top', cbase: 'base', cpat: 'pat', cpat2: 'pat2', cacc: 'acc' };
   for (const [param, key] of Object.entries(map)) { const v = q.get(param); if (v) s.colors[key] = v; }
   if (q.get('spin') === '0') s.spin = false;

@@ -25,8 +25,12 @@
 // toward +z. Units are metres. Only dependency: three.
 
 import * as THREE from 'three';
+import { applySurfaceGradient } from './surfaceGradient';
+import { noseNamePaths, stickerPaths, type NoseSticker } from './noseStickers';
 
-export type BoardPattern = 'none' | 'lengthStripes' | 'diagonal' | 'chevrons' | 'split' | 'blocks';
+import { designBands, type Band, type WorkshopPattern } from './boardPatterns';
+
+export type BoardPattern = WorkshopPattern | 'diagonal' | 'chevrons' | 'split' | 'blocks';
 
 export interface SwallowtailBoardOptions {
   /** Board length, m. Default GAME_BOARD_LENGTH (1.70) — fixed by the game's
@@ -48,12 +52,17 @@ export interface SwallowtailBoardOptions {
   topsheetColor?: string;
   /** Abstract geometric pattern printed — as geometry — on the topsheet. */
   pattern?: BoardPattern;
+  noseSticker?: NoseSticker;
+  noseStickerColor?: string;
+  noseName?: string;
   /** Pattern colour (main). Default red '#d82f2a'. */
   patternColor?: string;
   /** Pattern colour (secondary, where the pattern has one). Default '#17171a'. */
   patternColor2?: string;
   /** Base flat colour. Default '#d82f2a' (sampled from the reference photo). */
   baseColor?: string;
+  topsheetTailColor?: string;
+  baseTailColor?: string;
   /** Optional geometric pattern on the base, same vocabulary as `pattern`. */
   basePattern?: BoardPattern;
   /** Base pattern colour. Default '#f2f2f0'. */
@@ -91,6 +100,9 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
   notchDepth: 0.22,
   topsheetColor: '#f2f2f0',
   pattern: 'none',
+  noseSticker: 'none',
+  noseStickerColor: '#17171a',
+  noseName: '',
   patternColor: '#d82f2a',
   patternColor2: '#17171a',
   baseColor: '#d82f2a',
@@ -258,6 +270,8 @@ interface PatternLayer {
    *  (below), NOT by grid tessellation — a stripe boundary running along the
    *  grid's diagonal triangle split feathers badly at any sane resolution. */
   strip?: [number, number];
+  band?: Band;
+  offset?: number;
 }
 
 function patternLayers(kind: BoardPattern, o: typeof DEFAULTS, forBase: boolean): PatternLayer[] {
@@ -295,7 +309,9 @@ function patternLayers(kind: BoardPattern, o: typeof DEFAULTS, forBase: boolean)
       return [{ color: c1, test: chk }];
     }
     default:
-      return [];
+      return designBands(kind).map(({ ink, band }) => ({
+        color: ink === 1 ? c1 : c2, band, offset: ink === 1 ? 0 : 0.0003,
+      }));
   }
 }
 
@@ -459,13 +475,13 @@ function patternGeometry(grid: BoardGrid, side: 1 | -1, test: RegionTest): THREE
 /** A lengthwise stripe as a clean quad strip hugging the deck: vertices sit
  *  exactly on the stripe's x edges (clamped inside the outline near the
  *  tips), so its edges are ruler-straight at any grid resolution. */
-function stripGeometry(o: typeof DEFAULTS, side: 1 | -1, x0: number, x1: number): THREE.BufferGeometry | null {
-  const NL = o.segments[0];
+function stripGeometry(o: typeof DEFAULTS, side: 1 | -1, band: Band, offset = 0, samples = o.segments[0]): THREE.BufferGeometry | null {
+  const NL = samples;
   const pos: number[] = [];
   const nor: number[] = [];
   const surfY = (x: number, t: number) => {
     const hw = Math.max(halfWidthAt(t, o), 1e-4);
-    return liftAt(t) + side * ((o.thickness / 2) * thicknessFactor(t, Math.abs(x) / hw) + 0.0011);
+    return liftAt(t) + side * ((o.thickness / 2) * thicknessFactor(t, Math.abs(x) / hw) + 0.0011 + offset);
   };
   const nVec = new THREE.Vector3();
   const surfN = (x: number, t: number): number[] => {
@@ -483,6 +499,9 @@ function stripGeometry(o: typeof DEFAULTS, side: 1 | -1, x0: number, x1: number)
     const t = rowT(i / NL);
     const hw = halfWidthAt(t, o);
     const nh = notchHalfAt(t, o);
+    const bounds = band(t);
+    if (!bounds) { prev.clear(); continue; }
+    const [x0, x1] = bounds;
     const xa = Math.max(x0, -hw + 0.003), xb = Math.min(x1, hw - 0.003);
     const segs = new Map<string, [number, number]>();
     if (xb - xa >= 0.002) {
@@ -512,6 +531,41 @@ function stripGeometry(o: typeof DEFAULTS, side: 1 | -1, x0: number, x1: number)
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   return g;
+}
+
+/** Flat strokes projected onto the rocker at the nose. */
+function noseLineGeometry(
+  o: typeof DEFAULTS, paths: ReturnType<typeof stickerPaths>,
+  center: number, scale: number, halfStroke: number,
+) {
+  const positions: number[] = [];
+  const point = (x: number, z: number) => {
+    const t = z / o.length + 0.5;
+    const width = Math.max(halfWidthAt(t, o), 1e-4);
+    const y = liftAt(t) + o.thickness / 2 * thicknessFactor(t, Math.abs(x) / width);
+    return [x, y + 0.0022, z];
+  };
+
+  for (const path of paths) {
+    for (let i = 1; i < path.length; i++) {
+      const [ax, az] = path[i - 1].map((v) => v * scale);
+      const [bx, bz] = path[i].map((v) => v * scale);
+      const dx = bx - ax, dz = bz - az;
+      const length = Math.hypot(dx, dz);
+      const nx = -dz * halfStroke / length, nz = dx * halfStroke / length;
+      const steps = Math.ceil(length / 0.006);
+      const zCenter = (center - 0.5) * o.length;
+      for (let j = 0; j < steps; j++) {
+        const u = j / steps, v = (j + 1) / steps;
+        const a = point(ax + dx * u + nx, zCenter + az + dz * u + nz);
+        const b = point(ax + dx * v + nx, zCenter + az + dz * v + nz);
+        const c = point(ax + dx * u - nx, zCenter + az + dz * u - nz);
+        const d = point(ax + dx * v - nx, zCenter + az + dz * v - nz);
+        positions.push(...a, ...b, ...c, ...c, ...b, ...d);
+      }
+    }
+  }
+  return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 }
 
 /** Sidewall: quads along every boundary edge of the top grid (outer outline
@@ -560,18 +614,22 @@ export function createSwallowtailBoard(options: SwallowtailBoardOptions = {}): T
   group.add(core);
 
   const top = new THREE.Mesh(surfaceGeometry(grid, 1), flat(o.topsheetColor, 0.5));
+  applySurfaceGradient(top, options.topsheetTailColor);
   top.name = 'topsheet';
   group.add(top);
 
   const base = new THREE.Mesh(surfaceGeometry(grid, -1), flat(o.baseColor, 0.32));
+  applySurfaceGradient(base, options.baseTailColor);
   base.name = 'base';
   group.add(base);
 
   // Abstract geometric graphics — geometry layers, never textures.
   const addLayers = (kind: BoardPattern, forBase: boolean, side: 1 | -1, rough: number) => {
     for (const layer of patternLayers(kind, o, forBase)) {
-      const g = layer.strip
-        ? stripGeometry(o, side, layer.strip[0], layer.strip[1])
+      const g = layer.band
+        ? stripGeometry(o, side, layer.band, layer.offset, Math.max(240, o.segments[0]))
+        : layer.strip
+        ? stripGeometry(o, side, () => layer.strip!)
         : patternGeometry(grid, side, layer.test!);
       if (g) { const m = new THREE.Mesh(g, flat(layer.color, rough)); m.name = forBase ? 'pattern-base' : 'pattern-top'; group.add(m); }
     }
@@ -590,6 +648,19 @@ export function createSwallowtailBoard(options: SwallowtailBoardOptions = {}): T
       m.receiveShadow = o.receiveShadow;
     }
   });
+  if (o.noseSticker !== 'none') {
+    const material = new THREE.MeshBasicMaterial({ color: o.noseStickerColor });
+    const radius = Math.min(0.085, o.length * 0.05, halfWidthAt(0.08, o) * 0.75);
+    const sticker = new THREE.Mesh(noseLineGeometry(o, stickerPaths(o.noseSticker), 0.135, radius, radius * 0.031), material);
+    if (o.noseName) {
+      const unit = Math.min(0.0065, halfWidthAt(0.21, o) / 30);
+      const name = new THREE.Mesh(noseLineGeometry(o, noseNamePaths(o.noseName), 0.215, unit, unit * 0.19), material);
+      name.name = 'nose-sticker-name';
+      group.add(name);
+    }
+    sticker.name = 'nose-sticker';
+    group.add(sticker);
+  }
   group.userData.boardSpec = {
     length: o.length, noseWidth: o.noseWidth, waistWidth: o.waistWidth,
     tailWidth: o.tailWidth, notchDepth: o.notchDepth, thickness: o.thickness,
