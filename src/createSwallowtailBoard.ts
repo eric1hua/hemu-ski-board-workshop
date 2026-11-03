@@ -32,11 +32,13 @@ export interface SwallowtailBoardOptions {
   /** Board length, m. Default GAME_BOARD_LENGTH (1.70) — fixed by the game's
    *  rider height; override only for lab comparisons. */
   length?: number;
-  /** Widest width, at the nose, m. Default 0.352. */
+  /** Max width (at t=0.18 of the measured outline), m. Default 0.352.
+   *  The outline is a measured table (see OUTLINE); waistWidth and
+   *  tailWidth below are informational, read off the same table. */
   noseWidth?: number;
   /** Waist (narrowest) width, m. Default 0.293. */
   waistWidth?: number;
-  /** Width just before the swallowtail split, m. Default 0.312. */
+  /** Width just before the swallowtail split, m. Default 0.308. */
   tailWidth?: number;
   /** Core thickness at the waist, m. Default 0.009. */
   thickness?: number;
@@ -79,7 +81,7 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
   length: GAME_BOARD_LENGTH,
   noseWidth: 0.352,
   waistWidth: 0.293,
-  tailWidth: 0.312,
+  tailWidth: 0.308,
   thickness: 0.009,
   notchDepth: 0.22,
   topsheetColor: '#f2f2f0',
@@ -108,47 +110,42 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
 // Dart — the user chose the red board's shape over containment.
 // ---------------------------------------------------------------------------
 
-function halfWidthAt(t: number, o: typeof DEFAULTS): number {
-  const n = o.noseWidth / 2, w = o.waistWidth / 2, tl = o.tailWidth / 2;
-  const tApex = 1 - o.notchDepth / o.length;
-  // Control points measured off the reference product photo (Korua Dart,
-  // pixel-scanned 2026-11-03): max width at t~0.16, waist plateau
-  // 0.833 of max at t~0.58-0.66, tail re-widening to 0.885 at the notch
-  // apex, then prong outer edges tapering to 0.72 of tail width.
-  const pts: Array<[number, number]> = [
-    [0.0, 0.004],
-    [0.02, n * 0.36],
-    [0.05, n * 0.62],
-    [0.08, n * 0.80],
-    [0.10, n * 0.879],
-    [0.16, n],
-    [0.22, n * 0.996],
-    [0.30, n * 0.942],
-    [0.38, n * 0.890],
-    [0.45, w * 1.035],
-    [0.55, w * 1.004],
-    [0.66, w],
-    [0.74, w * 1.006],
-    [0.80, w + (tl - w) * 0.30],
-    [0.85, tl * 0.985],
-    [tApex, tl],
-    [0.90, tl * 0.97],
-    [0.95, tl * 0.90],
-    [0.98, tl * 0.80],
-    [1.0, tl * 0.70],
-  ];
-  if (t <= pts[0][0]) return pts[0][1];
-  for (let i = 1; i < pts.length; i++) {
-    if (t <= pts[i][0]) {
-      const [t1, w1] = pts[i - 1], [t2, w2] = pts[i];
-      const p0 = pts[Math.max(0, i - 2)], p3 = pts[Math.min(pts.length - 1, i + 1)];
-      const u = (t - t1) / (t2 - t1);
-      // Catmull-Rom on the half-width for a smooth sidecut.
-      const v = 0.5 * ((2 * w1) + (-p0[1] + w2) * u + (2 * p0[1] - 5 * w1 + 4 * w2 - p3[1]) * u * u + (-p0[1] + 3 * w1 - 3 * w2 + p3[1]) * u * u * u);
-      return Math.max(0.0015, v);
+// MEASURED OUTLINE — the user ordered the red reference board's shape
+// copied exactly (2026-11-03: "一定要和红色板子样子一样"). Both tables are
+// pixel-scanned from that product photo (red base board, rows averaged,
+// fractions of the max half-width; max at t=0.18). They are data, not
+// interpretation: do not "correct" the tail values for the photo's
+// perspective — the user picked this image's shape as-is.
+const OUTLINE: Array<[number, number]> = [
+  [0.00, 0.102], [0.02, 0.380], [0.04, 0.563], [0.06, 0.694], [0.08, 0.793],
+  [0.10, 0.876], [0.12, 0.934], [0.14, 0.969], [0.16, 0.990], [0.18, 1.000],
+  [0.20, 0.993], [0.22, 0.988], [0.24, 0.983], [0.26, 0.964], [0.28, 0.956],
+  [0.30, 0.938], [0.32, 0.930], [0.34, 0.913], [0.36, 0.903], [0.38, 0.889],
+  [0.40, 0.880], [0.42, 0.870], [0.44, 0.864], [0.46, 0.855], [0.48, 0.849],
+  [0.50, 0.840], [0.52, 0.841], [0.54, 0.834], [0.56, 0.830], [0.58, 0.830],
+  [0.60, 0.828], [0.62, 0.830], [0.64, 0.830], [0.66, 0.830], [0.68, 0.830],
+  [0.70, 0.830], [0.72, 0.834], [0.74, 0.835], [0.76, 0.846], [0.78, 0.851],
+  [0.80, 0.851], [0.82, 0.859], [0.84, 0.870], [0.86, 0.876], [0.88, 0.881],
+  [0.90, 0.896], [0.92, 0.900], [0.94, 0.909], [0.96, 0.915], [0.98, 0.771],
+  [1.00, 0.508],
+];
+const NOTCH_GAP: Array<[number, number]> = [
+  [0.86, 0.000], [0.88, 0.072], [0.90, 0.148], [0.92, 0.216], [0.94, 0.278],
+  [0.96, 0.334], [0.98, 0.385], [1.00, 0.448],
+];
+function tableAt(tab: Array<[number, number]>, t: number): number {
+  if (t <= tab[0][0]) return tab[0][1];
+  for (let i = 1; i < tab.length; i++) {
+    if (t <= tab[i][0]) {
+      const [t1, v1] = tab[i - 1], [t2, v2] = tab[i];
+      return v1 + (v2 - v1) * ((t - t1) / (t2 - t1));
     }
   }
-  return tl;
+  return tab[tab.length - 1][1];
+}
+
+function halfWidthAt(t: number, o: typeof DEFAULTS): number {
+  return Math.max(0.0015, tableAt(OUTLINE, t) * (o.noseWidth / 2));
 }
 
 /** Centre-line height (rocker + camber), m above the resting plane. */
@@ -168,14 +165,10 @@ function thicknessFactor(t: number, sAbs: number): number {
   return nose * tail * edge;
 }
 
-/** Half-width of the swallowtail notch gap at station t (0 before the apex). */
+/** Half-width of the swallowtail notch gap at station t — from the same
+ *  measured scan (NOTCH_GAP table, fractions of the max half-width). */
 function notchHalfAt(t: number, o: typeof DEFAULTS): number {
-  const tApex = 1 - o.notchDepth / o.length;
-  if (t <= tApex) return 0;
-  const u = (t - tApex) / (1 - tApex);
-  // Reference scan: the V gap's half-width reaches ~0.50 of the tail
-  // half-width at the tail end (fat paddles at 0.42 read wrong).
-  return 0.50 * (o.tailWidth / 2) * u;
+  return tableAt(NOTCH_GAP, t) * (o.noseWidth / 2);
 }
 
 // ---------------------------------------------------------------------------
