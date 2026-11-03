@@ -88,13 +88,18 @@ const SKI_OUTLINE: Array<[number, number]> = [
 
 // MEASURED LIFT — base deviation from the contact plane, read off the
 // base-to-base side photo (inner-edge deviation of the pair, scaled to
-// the 1.70 m game length). The shovel's rise is a long low early rise
-// with the curl concentrated in the last 3% (43 mm at the tip, contact
-// at t ~ 0.07); the tail stays flat until t ~ 0.95 and ends 14 mm up.
-// Camber is added separately below (the side photo's mid-body reads
-// ~4-5 mm, matching the sine the old hand profile used).
+// the 1.70 m game length). The tail stays flat until t ~ 0.95 and ends
+// 14 mm up. Camber is added separately below (the side photo's mid-body
+// reads ~4-5 mm, matching the sine the old hand profile used).
+// TIP CORRECTION (v35, user's visual verdict on v34: "tip rises too
+// high, doesn't look like a ski"): the photo scan read 43 mm at the
+// tip with the curl concentrated in the last 3% — the base-to-base
+// product shot splays the tips apart and overstates exactly that end
+// segment. The shipped table caps the tip at 30 mm and spreads the
+// rise out (no end hook); the measured long-low-rise SHAPE is kept,
+// the end magnitudes are the user's call, not the photo's.
 const SKI_LIFT: Array<[number, number]> = [
-  [0.000, 0.043], [0.010, 0.034], [0.020, 0.025], [0.030, 0.018], [0.050, 0.007],
+  [0.000, 0.030], [0.010, 0.024], [0.020, 0.018], [0.030, 0.013], [0.050, 0.005],
   [0.070, 0.000], [0.930, 0.000], [0.960, 0.001], [0.980, 0.006], [1.000, 0.014],
 ];
 
