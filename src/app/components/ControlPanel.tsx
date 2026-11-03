@@ -1,6 +1,7 @@
 import React from 'react';
 import type { GradientSurface, Pattern, UIState } from '../types';
 import { SPECS } from '../types';
+import type { GearStyle } from '../../gearDesign';
 
 import { NOSE_NAME_LIMIT, NOSE_STICKERS, normalizeNoseName, type NoseSticker } from '../../noseStickers';
 import { BOARD_PATTERNS } from '../../boardPatterns';
@@ -14,7 +15,10 @@ export function ControlPanel(props: {
   children?: React.ReactNode;
   tris: number;
   version: string;
-  onChange: (patch: Partial<UIState>) => void;
+  linked: boolean;
+  onLinkedChange: (linked: boolean) => void;
+  onChange: (patch: Partial<Omit<UIState, keyof GearStyle>>) => void;
+  onStyleChange: (patch: Partial<GearStyle>, preview?: Partial<Omit<UIState, keyof GearStyle>>) => void;
   onTailColor: (surface: GradientSurface, value?: string) => void;
   onColor: (key: keyof UIState['colors'], value: string) => void;
 }) {
@@ -23,6 +27,11 @@ export function ControlPanel(props: {
   return (
     <div id="panel">
       <h2>款式面板</h2>
+      <div className="row">
+        <input type="checkbox" id="link-gear" checked={props.linked}
+          onChange={(e) => props.onLinkedChange(e.currentTarget.checked)} />
+        <label htmlFor="link-gear">联动单板和双板配色</label>
+      </div>
       {COLOR_ROWS.map(([key, label]) => (
         <React.Fragment key={key}>
           <div className="row">
@@ -42,18 +51,18 @@ export function ControlPanel(props: {
           )}
         </React.Fragment>
       ))}
-      <div className="row">
-        <label htmlFor="pattern">花纹图案</label>
-        <select id="pattern" value={s.pattern} onChange={(e) => props.onChange({ pattern: e.target.value as Pattern })}>
-          {BOARD_PATTERNS.map(([p, label]) => <option key={p} value={p}>{label}</option>)}
-        </select>
-      </div>
       {s.gear === 'board' && (
         <>
           <div className="row">
+            <label htmlFor="pattern">花纹图案</label>
+            <select id="pattern" value={s.pattern} onChange={(e) => props.onStyleChange({ pattern: e.target.value as Pattern })}>
+              {BOARD_PATTERNS.map(([p, label]) => <option key={p} value={p}>{label}</option>)}
+            </select>
+          </div>
+          <div className="row">
             <label htmlFor="nose-sticker">板头贴纸</label>
             <select id="nose-sticker" value={s.noseSticker}
-              onChange={(e) => props.onChange({ noseSticker: e.target.value as NoseSticker, view: 'solo', showBase: false })}>
+              onChange={(e) => props.onStyleChange({ noseSticker: e.target.value as NoseSticker }, { view: 'solo', showBase: false })}>
               {NOSE_STICKERS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </div>
@@ -63,12 +72,12 @@ export function ControlPanel(props: {
               <label htmlFor="nose-name">贴纸署名</label>
               <input id="nose-name" type="text" value={s.noseName} maxLength={NOSE_NAME_LIMIT}
                 size={11} placeholder="英文名" autoComplete="off" spellCheck={false}
-                onChange={(e) => props.onChange({ noseName: normalizeNoseName(e.currentTarget.value), view: 'solo', showBase: false })} />
+                onChange={(e) => props.onStyleChange({ noseName: normalizeNoseName(e.currentTarget.value) }, { view: 'solo', showBase: false })} />
             </div>
             <div className="row">
               <label htmlFor="sticker-color">贴纸颜色</label>
               <input id="sticker-color" type="color" value={s.noseStickerColor}
-                onInput={(e) => props.onChange({ noseStickerColor: e.currentTarget.value, view: 'solo', showBase: false })} />
+                onInput={(e) => props.onStyleChange({ noseStickerColor: e.currentTarget.value }, { view: 'solo', showBase: false })} />
             </div>
             </>
           )}

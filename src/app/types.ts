@@ -44,7 +44,12 @@ export const DEFAULT_STATE: UIState = {
 /** Initial state from URL params (shareable links + screenshot QA). */
 export function stateFromURL(q: URLSearchParams): UIState {
   const s: UIState = { ...DEFAULT_STATE, colors: { ...DEFAULT_STATE.colors } };
-  const gear = q.get('gear'); if (gear === 'board' || gear === 'skis') s.gear = gear;
+  const gear = q.get('gear');
+  if (gear === 'skis') {
+    s.gear = gear;
+    s.colors.top = '#2f5d8a';
+    s.colors.pat2 = '#f2a7b9';
+  }
   const view = q.get('view'); if (view === 'solo' || view === 'binding' || view === 'wear' || view === 'glide') s.view = view;
   const pat = BOARD_PATTERNS.find(([id]) => id === q.get('pattern'));
   if (pat) s.pattern = pat[0];

@@ -73,9 +73,9 @@ export function boardOptions(s: GearStyle) {
 export function skiOptions(s: GearStyle) {
   const c = s.colors;
   return {
-    topsheetColor: c.top === '#f2f2f0' ? '#2f5d8a' : c.top,
+    topsheetColor: c.top,
     topsheetTailColor: s.tailColors.top, baseTailColor: s.tailColors.base,
     baseColor: c.base, stripeColor: c.pat,
-    accentColor: c.pat2 === '#17171a' ? '#f2a7b9' : c.pat2,
+    accentColor: c.pat2,
   };
 }
