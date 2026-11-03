@@ -32,11 +32,11 @@ export interface SwallowtailBoardOptions {
   /** Board length, m. Default GAME_BOARD_LENGTH (1.70) — fixed by the game's
    *  rider height; override only for lab comparisons. */
   length?: number;
-  /** Widest width, at the nose, m. Default 0.330. */
+  /** Widest width, at the nose, m. Default 0.500. */
   noseWidth?: number;
-  /** Waist (narrowest) width, m. Default 0.274. */
+  /** Waist (narrowest) width, m. Default 0.460. */
   waistWidth?: number;
-  /** Width just before the swallowtail split, m. Default 0.302. */
+  /** Width just before the swallowtail split, m. Default 0.490. */
   tailWidth?: number;
   /** Core thickness at the waist, m. Default 0.009. */
   thickness?: number;
@@ -77,9 +77,9 @@ export const GAME_BOARD_LENGTH = 1.7;
 
 const DEFAULTS: Required<SwallowtailBoardOptions> = {
   length: GAME_BOARD_LENGTH,
-  noseWidth: 0.330,
-  waistWidth: 0.274,
-  tailWidth: 0.302,
+  noseWidth: 0.500,
+  waistWidth: 0.460,
+  tailWidth: 0.490,
   thickness: 0.009,
   notchDepth: 0.21,
   topsheetColor: '#f2f2f0',
@@ -98,9 +98,13 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
 
 // ---------------------------------------------------------------------------
 // Shape profile. t = 0 at the nose tip, 1 at the tail end.
-// Half-width control points are anchored on the three width options and the
-// proportions measured off the reference silhouette (nose widest at t~0.2,
-// waist minimum at t~0.62-0.66, tail re-widening to ~0.91 of nose).
+// Half-width control points are anchored on the three width options.
+// WIDTH RULE (user, 2026-11-03): the board must fully contain the female
+// rider's boots at the stance — her boots measure 0.412 long x ~0.24 wide
+// (GLB vertices), projecting ~0.45 across the board at duck angles, so the
+// width at both insert packs (t=0.42 / 0.74) is >= ~0.46. Toes outside
+// the board are not allowed. (The original 330/274/302 silhouette came
+// from a real-world reference board whose boots are far smaller.)
 // ---------------------------------------------------------------------------
 
 function halfWidthAt(t: number, o: typeof DEFAULTS): number {

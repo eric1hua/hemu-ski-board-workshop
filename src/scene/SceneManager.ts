@@ -186,7 +186,11 @@ export class SceneManager {
     ctx.rig.updateMatrixWorld(true);
     const board = ctx.gear === 'board';
     const gliding = this.state!.view === 'glide';
-    const ankleOf = (b: THREE.Object3D) => b.localToWorld(new THREE.Vector3(0, board ? 0.115 : 0.125, board ? 0.005 : -0.01));
+    // Her boots, measured off the GLB's foot-weighted vertices: 0.412 long
+    // (toe reach 0.284 ahead of the ankle, heel 0.128 behind), centre
+    // +0.078 forward of the ankle — so the ankle target sits 0.073 behind
+    // the binding centre to centre the BOOT on the binding, not the ankle.
+    const ankleOf = (b: THREE.Object3D) => b.localToWorld(new THREE.Vector3(0, board ? 0.115 : 0.125, board ? -0.073 : -0.01));
     const frontA = ankleOf(ctx.front), backA = ankleOf(ctx.back);
     const hips = frontA.clone().add(backA).multiplyScalar(0.5);
     const leg = r.legLength();

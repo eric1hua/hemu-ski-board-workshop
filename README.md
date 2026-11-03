@@ -16,7 +16,7 @@
 
 | 资产 | 工厂函数 | 规格 |
 |---|---|---|
-| 燕尾粉雪单板 | `src/createSwallowtailBoard.ts` | 长 1700 · 头 330 / 腰 274 / 尾 302 mm · 燕尾深 210 |
+| 燕尾粉雪单板 | `src/createSwallowtailBoard.ts` | 长 1700 · 头 500 / 腰 460 / 尾 490 mm · 燕尾深 210 |
 | 全山双板（一对） | `src/createSkis.ts` | 长 1700 · 132 / 105 / 118 mm · 站距 250 |
 | 单板固定器（单只） | `src/createSnowboardBinding.ts` | 内宽 190 · 鞋床 360 · 背板高 240 |
 | 双板固定器（单只） | `src/createSkiBinding.ts` | 适配鞋底 340 · 站高 35 · 刹车宽 145 |
