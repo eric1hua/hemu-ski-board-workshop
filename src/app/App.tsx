@@ -5,7 +5,7 @@ import { SceneManager } from '../scene/SceneManager';
 import { Toolbar } from './components/Toolbar';
 import { ControlPanel } from './components/ControlPanel';
 
-export const VERSION = 'v26';
+export const VERSION = 'v27';
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
