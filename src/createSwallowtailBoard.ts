@@ -32,11 +32,11 @@ export interface SwallowtailBoardOptions {
   /** Board length, m. Default GAME_BOARD_LENGTH (1.70) — fixed by the game's
    *  rider height; override only for lab comparisons. */
   length?: number;
-  /** Widest width, at the nose, m. Default 0.560. */
+  /** Widest width, at the nose, m. Default 0.352. */
   noseWidth?: number;
-  /** Waist (narrowest) width, m. Default 0.467. */
+  /** Waist (narrowest) width, m. Default 0.293. */
   waistWidth?: number;
-  /** Width just before the swallowtail split, m. Default 0.496. */
+  /** Width just before the swallowtail split, m. Default 0.312. */
   tailWidth?: number;
   /** Core thickness at the waist, m. Default 0.009. */
   thickness?: number;
@@ -77,9 +77,9 @@ export const GAME_BOARD_LENGTH = 1.7;
 
 const DEFAULTS: Required<SwallowtailBoardOptions> = {
   length: GAME_BOARD_LENGTH,
-  noseWidth: 0.560,
-  waistWidth: 0.467,
-  tailWidth: 0.496,
+  noseWidth: 0.352,
+  waistWidth: 0.293,
+  tailWidth: 0.312,
   thickness: 0.009,
   notchDepth: 0.22,
   topsheetColor: '#f2f2f0',
@@ -99,12 +99,13 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
 // ---------------------------------------------------------------------------
 // Shape profile. t = 0 at the nose tip, 1 at the tail end.
 // Half-width control points are anchored on the three width options.
-// WIDTH RULE (user, 2026-11-03): the board must fully contain the female
-// rider's boots at the stance — her boots measure 0.412 long x ~0.24 wide
-// (GLB vertices), projecting ~0.45 across the board at duck angles, so the
-// width at both insert packs (t=0.42 / 0.74) is >= ~0.46. Toes outside
-// the board are not allowed. (The original 330/274/302 silhouette came
-// from a real-world reference board whose boots are far smaller.)
+// WIDTH RULE (user, 2026-11-03, REVISED same day): use the RED reference
+// board's own proportions. Its pixel-scanned aspect is length/maxWidth
+// = 4.83, so at the game's 1.70 m the widths are 352 / 293 / 312. This
+// supersedes the earlier boot-containment sizing (560 wide): her boots
+// (0.412 long, projecting ~0.45 across) now overhang the stance widths
+// (308 / 295) by ~7 cm a side, exactly as real boots overhang a real
+// Dart — the user chose the red board's shape over containment.
 // ---------------------------------------------------------------------------
 
 function halfWidthAt(t: number, o: typeof DEFAULTS): number {
