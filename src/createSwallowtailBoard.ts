@@ -62,8 +62,10 @@ export interface SwallowtailBoardOptions {
   sidewallColor?: string;
   /** Include the geometric detail layer: binding insert packs + waist mark. Default true. */
   inserts?: boolean;
-  /** Grid resolution [lengthSegments, acrossSegments]. Default [220, 44]
-   *  (lab quality). A game build wants ~[96, 20]: same silhouette, ~1/5 the
+  /** Grid resolution [lengthSegments, acrossSegments]. Default [160, 24]
+   *  (v32: rows are warped — see ROW_T — so the tips get finer sampling
+   *  than a uniform 220 grid while the total triangle count nearly
+   *  halves). A game build wants ~[96, 20]: same silhouette, ~1/5 the
    *  triangles — the rocker curve does not need lab density. */
   segments?: [number, number];
   castShadow?: boolean;
@@ -93,7 +95,7 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
   basePatternColor: '#f2f2f0',
   sidewallColor: '#232327',
   inserts: true,
-  segments: [220, 44],
+  segments: [160, 24],
   castShadow: true,
   receiveShadow: true,
 };
@@ -120,8 +122,17 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
 // fractions of the max half-width; max at t=0.18). They are data, not
 // interpretation: do not "correct" the tail values for the photo's
 // perspective — the user picked this image's shape as-is.
+// v32 refinement: both ends carry per-row stations (~0.004 t steps,
+// scanned row by row, not bin-averaged), and the nose tip station is
+// 0.030 rather than the photo's anti-aliased first-row 0.078 — the user
+// circled the old flat-cut tip (the 0.102 first station) as a defect;
+// 0.030 keeps the measured curve from t=0.004 on while letting the tip
+// render as the round cap the photo shows.
 const OUTLINE: Array<[number, number]> = [
-  [0.00, 0.102], [0.02, 0.380], [0.04, 0.563], [0.06, 0.694], [0.08, 0.793],
+  [0.000, 0.030], [0.004, 0.173], [0.007, 0.235], [0.010, 0.280], [0.014, 0.321],
+  [0.017, 0.358], [0.021, 0.399], [0.024, 0.432], [0.028, 0.465], [0.031, 0.498],
+  [0.035, 0.527], [0.038, 0.560], [0.042, 0.584], [0.045, 0.605], [0.049, 0.634],
+  [0.052, 0.650], [0.06, 0.694], [0.08, 0.793],
   [0.10, 0.876], [0.12, 0.934], [0.14, 0.969], [0.16, 0.990], [0.18, 1.000],
   [0.20, 0.993], [0.22, 0.988], [0.24, 0.983], [0.26, 0.964], [0.28, 0.956],
   [0.30, 0.938], [0.32, 0.930], [0.34, 0.913], [0.36, 0.903], [0.38, 0.889],
@@ -130,12 +141,14 @@ const OUTLINE: Array<[number, number]> = [
   [0.60, 0.828], [0.62, 0.830], [0.64, 0.830], [0.66, 0.830], [0.68, 0.830],
   [0.70, 0.830], [0.72, 0.834], [0.74, 0.835], [0.76, 0.846], [0.78, 0.851],
   [0.80, 0.851], [0.82, 0.859], [0.84, 0.870], [0.86, 0.876], [0.88, 0.881],
-  [0.90, 0.896], [0.92, 0.900], [0.94, 0.909], [0.96, 0.915], [0.98, 0.771],
-  [1.00, 0.508],
+  [0.90, 0.896], [0.92, 0.902], [0.94, 0.909], [0.95, 0.909], [0.957, 0.909],
+  [0.962, 0.910], [0.967, 0.889], [0.971, 0.844], [0.976, 0.798], [0.980, 0.749],
+  [0.985, 0.691], [0.990, 0.630], [0.994, 0.564], [1.00, 0.481],
 ];
 const NOTCH_GAP: Array<[number, number]> = [
-  [0.86, 0.000], [0.88, 0.072], [0.90, 0.148], [0.92, 0.216], [0.94, 0.278],
-  [0.96, 0.334], [0.98, 0.385], [1.00, 0.448],
+  [0.86, 0.000], [0.88, 0.072], [0.90, 0.148], [0.92, 0.216], [0.930, 0.239],
+  [0.939, 0.267], [0.948, 0.296], [0.957, 0.321], [0.967, 0.346], [0.976, 0.370],
+  [0.985, 0.395], [0.994, 0.412], [1.00, 0.440],
 ];
 function tableAt(tab: Array<[number, number]>, t: number): number {
   if (t <= tab[0][0]) return tab[0][1];
@@ -146,6 +159,18 @@ function tableAt(tab: Array<[number, number]>, t: number): number {
     }
   }
   return tab[tab.length - 1][1];
+}
+
+/** Row placement warp (v32): grid rows are NOT uniform in t. The warp
+ *  concentrates rows where the outline curves — the nose cap and the
+ *  swallowtail prongs — and thins them along the straight mid-body, so a
+ *  160-row grid samples the tips finer than the old uniform 220-row grid
+ *  did, with ~half the triangles and no silhouette steps. [u, t] pairs. */
+const ROW_T: Array<[number, number]> = [
+  [0.00, 0.00], [0.14, 0.06], [0.76, 0.88], [1.00, 1.00],
+];
+function rowT(u: number): number {
+  return tableAt(ROW_T, u);
 }
 
 function halfWidthAt(t: number, o: typeof DEFAULTS): number {
@@ -291,7 +316,7 @@ function buildGrid(o: typeof DEFAULTS): BoardGrid {
   const tArr = new Float32Array(count);
   const valid: boolean[] = new Array(count).fill(false);
   for (let i = 0; i <= NL; i++) {
-    const t = i / NL;
+    const t = rowT(i / NL);
     const hw = halfWidthAt(t, o);
     const nh = notchHalfAt(t, o);
     for (let j = 0; j <= NC; j++) {
@@ -382,7 +407,7 @@ function stripGeometry(o: typeof DEFAULTS, side: 1 | -1, x0: number, x1: number)
   // ends. Runs connect only within the same segment key.
   let prev = new Map<string, [number[], number[]]>();
   for (let i = 0; i <= NL; i++) {
-    const t = i / NL;
+    const t = rowT(i / NL);
     const hw = halfWidthAt(t, o);
     const nh = notchHalfAt(t, o);
     const xa = Math.max(x0, -hw + 0.003), xb = Math.min(x1, hw - 0.003);
