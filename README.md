@@ -12,6 +12,12 @@
 
 另有固定器单独视图：可开「靴子占位」验配合尺寸，单板固定器的踝带/趾带可单独隐藏或整条拆开。迭代过程见 [VERSIONS.md](VERSIONS.md)（自核查截图迭代 20 版）。
 
+## 保存定制与游戏换装
+
+在款式面板点击「保存定制」，下载单板或双板的 JSON 文件。用「打开定制」可以继续编辑。Hemu Ski 的 **Outfit & gear → Import workshop design** 接收同一文件并立即装备，按单板和双板分别记住方案。「Use default」恢复当前类别的默认装备。
+
+文件格式为 `hemu-ski-gear` v1，只记录款式。游戏用相同的工厂代码生成模型，再按玩家的站姿装配。修改格式或工厂后，运行 `npm run build`，将生成的 `lib/gameGear.js` 同步到游戏仓库的 `src/player/workshop/gameGear-v1.js`。发布新格式时须保留 v1 文件的读取能力。
+
 ## 资产清单
 
 | 资产 | 工厂函数 | 规格 |

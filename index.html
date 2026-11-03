@@ -13,6 +13,8 @@
   .bar button { font-size:14px; padding:7px 12px; border-radius:8px; border:1px solid #3c4652; background:#1d2530; color:#dfe7ef; cursor:pointer; }
   .bar button.on { background:#e86a1c; border-color:#e86a1c; color:#fff; }
   #panel { position:fixed; right:10px; top:10px; width:238px; background:rgba(16,21,28,.9); color:#dfe7ef; border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.55; z-index:5; }
+  #panel { max-height:calc(100dvh - 44px); overflow-y:auto; }
+  #panel button { color:inherit; background:#263340; border:1px solid #536475; border-radius:5px; padding:4px 8px; cursor:pointer; }
   #panel h2 { font-size:15px; margin:0 0 6px; color:#fff; }
   #panel h3 { font-size:13px; margin:10px 0 4px; color:#ffd9ae; }
   #panel .row { display:flex; align-items:center; gap:7px; margin:6px 0; }

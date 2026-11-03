@@ -11,6 +11,7 @@ const COLOR_ROWS: Array<[keyof UIState['colors'], string]> = [
 
 export function ControlPanel(props: {
   state: UIState;
+  children?: React.ReactNode;
   tris: number;
   version: string;
   onChange: (patch: Partial<UIState>) => void;
@@ -104,6 +105,7 @@ export function ControlPanel(props: {
           </div>
         </div>
       )}
+      {props.children}
       <div id="spec">{SPECS[`${s.view}_${s.gear}`] || ''}</div>
       <div id="stat-inline">三角面 {props.tris.toLocaleString()} · 贴图 0 · Workshop {props.version}</div>
     </div>

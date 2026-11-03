@@ -13,6 +13,7 @@ import { createSkiBinding } from '../createSkiBinding';
 import { createBootLast } from '../createBootLast';
 import { createRiderFigure, type RiderFigure } from '../createRiderFigure';
 import { FemaleRider } from './FemaleRider';
+import { boardOptions, skiOptions } from '../gearDesign';
 import type { UIState } from '../app/types';
 
 interface FemalePoseCtx {
@@ -105,34 +106,11 @@ export class SceneManager {
     this.applyLight();
   }
 
-  private boardOpts() {
-    const c = this.state!.colors;
-    return {
-      topsheetColor: c.top, baseColor: c.base,
-      topsheetTailColor: this.state!.tailColors.top,
-      baseTailColor: this.state!.tailColors.base,
-      noseSticker: this.state!.noseSticker, noseStickerColor: this.state!.noseStickerColor, noseName: this.state!.noseName,
-      pattern: this.state!.pattern, patternColor: c.pat, patternColor2: c.pat2,
-      basePattern: this.state!.pattern === 'none' ? 'none' as const : 'lengthStripes' as const,
-      basePatternColor: c.top,
-    };
-  }
-  private skiOpts() {
-    const c = this.state!.colors;
-    return {
-      topsheetColor: c.top === '#f2f2f0' ? '#2f5d8a' : c.top,
-      topsheetTailColor: this.state!.tailColors.top,
-      baseTailColor: this.state!.tailColors.base,
-      baseColor: c.base, stripeColor: c.pat,
-      accentColor: c.pat2 === '#17171a' ? '#f2a7b9' : c.pat2,
-    };
-  }
-
   private buildMountedGear(group: THREE.Group) {
     const s = this.state!;
     const bindings: THREE.Object3D[] = [];
     if (s.gear === 'board') {
-      const board = createSwallowtailBoard(this.boardOpts());
+      const board = createSwallowtailBoard(boardOptions(s));
       board.position.y = 0.0055;
       group.add(board);
       for (const [z, ang] of [[-0.136, Math.PI / 2 + 0.18], [0.408, Math.PI / 2 - 0.10]] as const) {
@@ -143,7 +121,7 @@ export class SceneManager {
         bindings.push(b);
       }
     } else {
-      const skis = createSkis(this.skiOpts());
+      const skis = createSkis(skiOptions(s));
       skis.position.y = 0.006;
       group.add(skis);
       for (const sx of [-1, 1]) {
@@ -238,7 +216,7 @@ export class SceneManager {
       }
       obj = mounted;
     } else if (s.view === 'solo') {
-      obj = s.gear === 'board' ? createSwallowtailBoard(this.boardOpts()) : createSkis(this.skiOpts());
+      obj = s.gear === 'board' ? createSwallowtailBoard(boardOptions(s)) : createSkis(skiOptions(s));
     } else if (s.view === 'binding') {
       const wrap = new THREE.Group();
       if (s.gear === 'board') {

@@ -7,21 +7,15 @@ export type Gear = 'board' | 'skis';
 export type View = 'solo' | 'binding' | 'wear' | 'glide';
 import { BOARD_PATTERNS, type WorkshopPattern } from '../boardPatterns';
 
-import { NOSE_STICKERS, type NoseSticker } from '../noseStickers';
+import { NOSE_STICKERS } from '../noseStickers';
+import type { GearStyle } from '../gearDesign';
 
 export type Pattern = WorkshopPattern;
 
 export type GradientSurface = 'top' | 'base';
 
-export interface UIState {
-  gear: Gear;
+export interface UIState extends GearStyle {
   view: View;
-  pattern: Pattern;
-  noseSticker: NoseSticker;
-  noseStickerColor: string;
-  noseName: string;
-  colors: { top: string; base: string; pat: string; pat2: string; acc: string };
-  tailColors: Partial<Record<GradientSurface, string>>;
   spin: boolean;
   boot: boolean;
   showBase: boolean;
