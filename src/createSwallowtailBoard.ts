@@ -32,13 +32,13 @@ export interface SwallowtailBoardOptions {
   /** Board length, m. Default GAME_BOARD_LENGTH (1.70) — fixed by the game's
    *  rider height; override only for lab comparisons. */
   length?: number;
-  /** Max width (at t=0.18 of the measured outline), m. Default 0.352.
+  /** Max width (at t=0.18 of the measured outline), m. Default 0.478.
    *  The outline is a measured table (see OUTLINE); waistWidth and
    *  tailWidth below are informational, read off the same table. */
   noseWidth?: number;
-  /** Waist (narrowest) width, m. Default 0.293. */
+  /** Waist (narrowest) width, m. Default 0.398. */
   waistWidth?: number;
-  /** Width just before the swallowtail split, m. Default 0.308. */
+  /** Width just before the swallowtail split, m. Default 0.418. */
   tailWidth?: number;
   /** Core thickness at the waist, m. Default 0.009. */
   thickness?: number;
@@ -62,10 +62,13 @@ export interface SwallowtailBoardOptions {
   sidewallColor?: string;
   /** Include the geometric detail layer: binding insert packs + waist mark. Default true. */
   inserts?: boolean;
-  /** Grid resolution [lengthSegments, acrossSegments]. Default [160, 24]
+  /** Grid resolution [lengthSegments, acrossSegments]. Default [144, 24]
    *  (v32: rows are warped — see ROW_T — so the tips get finer sampling
-   *  than a uniform 220 grid while the total triangle count nearly
-   *  halves). A game build wants ~[96, 20]: same silhouette, ~1/5 the
+   *  than a uniform 220 grid at half the triangles; v33: rows 160 -> 144
+   *  and the COLUMNS are warped toward the edges — see colWarp — so the
+   *  thickness roll at |s| 0.78..1 gets ~2x the samples at the same
+   *  column count, and deck normals are analytic, not mesh-derived).
+   *  A game build wants ~[96, 20]: same silhouette, ~1/5 the
    *  triangles — the rocker curve does not need lab density. */
   segments?: [number, number];
   castShadow?: boolean;
@@ -95,7 +98,7 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
   basePatternColor: '#f2f2f0',
   sidewallColor: '#232327',
   inserts: true,
-  segments: [160, 24],
+  segments: [144, 24],
   castShadow: true,
   receiveShadow: true,
 };
@@ -200,6 +203,44 @@ function notchHalfAt(t: number, o: typeof DEFAULTS): number {
   return tableAt(NOTCH_GAP, t) * (o.noseWidth / 2);
 }
 
+/** Column placement warp (v33): grid columns are NOT uniform in s. The
+ *  warp concentrates columns toward the edges, where the thickness roll
+ *  lives (|s| 0.78..1 gets ~1.5-2.3x the sampling of a uniform grid at
+ *  the same column count), and thins them across the flat mid-deck,
+ *  where nothing curves. s stays in [-1, 1]; positions are unchanged in
+ *  kind — only their spacing moves. */
+function colWarp(v: number): number {
+  return Math.sign(v) * (1 - Math.pow(1 - Math.abs(v), 1.55));
+}
+
+/** Analytic deck normal at (t, s) for one skin (side +1 top, -1 base),
+ *  from the height field itself: P(t, s) = (s*hw(t), lift(t) + side *
+ *  (half-thickness), t*L). v32 took normals from computeVertexNormals,
+ *  which ties shading quality to tessellation and leaves visible steps
+ *  wherever the grid is coarse; the surface is a closed-form function,
+ *  so its normals are too. Central differences on the same functions
+ *  the grid is built from — the normal field is smooth even where the
+ *  mesh is not. */
+function deckNormal(o: typeof DEFAULTS, t: number, s: number, side: 1 | -1, out: THREE.Vector3): void {
+  const P = (tt: number, ss: number): [number, number, number] => {
+    const tc = Math.min(1, Math.max(0, tt));
+    const half = (o.thickness / 2) * thicknessFactor(tc, Math.abs(ss));
+    return [ss * halfWidthAt(tc, o), liftAt(tc) + side * (half + 0.0004), tc * o.length - o.length / 2];
+  };
+  const et = 0.0015, es = 0.01;
+  const [tx1, ty1, tz1] = P(t + et, s), [tx0, ty0, tz0] = P(t - et, s);
+  const [sx1, sy1, sz1] = P(t, s + es), [sx0, sy0, sz0] = P(t, s - es);
+  const dT = [tx1 - tx0, ty1 - ty0, tz1 - tz0];
+  const dS = [sx1 - sx0, sy1 - sy0, sz1 - sz0];
+  out.set(
+    dS[1] * dT[2] - dS[2] * dT[1],
+    dS[2] * dT[0] - dS[0] * dT[2],
+    dS[0] * dT[1] - dS[1] * dT[0],
+  );
+  if (out.y * side < 0) out.negate();
+  out.normalize();
+}
+
 // ---------------------------------------------------------------------------
 // Abstract geometric patterns. A pattern is a region test in board space
 // (x = metres across the centre line, t = 0 nose .. 1 tail). The pattern
@@ -301,6 +342,8 @@ function detailGeometry(o: typeof DEFAULTS): THREE.BufferGeometry {
 interface BoardGrid {
   topPos: Float32Array;
   botPos: Float32Array;
+  topN: Float32Array;
+  botN: Float32Array;
   xArr: Float32Array;
   tArr: Float32Array;
   topIdx: number[];
@@ -312,21 +355,29 @@ function buildGrid(o: typeof DEFAULTS): BoardGrid {
   const count = (NL + 1) * (NC + 1);
   const topPos = new Float32Array(count * 3);
   const botPos = new Float32Array(count * 3);
+  const topN = new Float32Array(count * 3);
+  const botN = new Float32Array(count * 3);
   const xArr = new Float32Array(count);
   const tArr = new Float32Array(count);
+  const sArr = new Float32Array(count);
   const valid: boolean[] = new Array(count).fill(false);
+  const cols: number[] = [];
+  for (let j = 0; j <= NC; j++) cols.push(colWarp(j / NC * 2 - 1));
   for (let i = 0; i <= NL; i++) {
     const t = rowT(i / NL);
     const hw = halfWidthAt(t, o);
     const nh = notchHalfAt(t, o);
     for (let j = 0; j <= NC; j++) {
       const k = i * (NC + 1) + j;
-      const s = j / NC * 2 - 1;
+      const s = cols[j];
       let x = s * hw;
       let ok = Math.abs(x) >= nh - 1e-9;
       if (ok && nh > 0) {
-        // project the innermost surviving vertex of each prong onto the notch line
-        const step = 2 * hw / NC;
+        // project the innermost surviving vertex of each prong onto the
+        // notch line (step = local warped neighbour span, in x units —
+        // the full span, matching the pre-warp threshold's semantics;
+        // half of it left the gap edge up to a column off the line)
+        const step = (cols[Math.min(NC, j + 1)] - cols[Math.max(0, j - 1)]) * hw;
         if (Math.abs(x) - nh < step) x = Math.sign(x) * nh;
       }
       const half = (o.thickness / 2) * thicknessFactor(t, Math.abs(s));
@@ -334,9 +385,16 @@ function buildGrid(o: typeof DEFAULTS): BoardGrid {
       const z = t * o.length - o.length / 2;
       topPos.set([x, yMid + half + 0.0004, z], k * 3);
       botPos.set([x, yMid - half - 0.0004, z], k * 3);
-      xArr[k] = x; tArr[k] = t;
+      xArr[k] = x; tArr[k] = t; sArr[k] = s;
       valid[k] = ok;
     }
+  }
+  const n = new THREE.Vector3();
+  for (let k = 0; k < count; k++) {
+    deckNormal(o, tArr[k], sArr[k], 1, n);
+    topN.set([n.x, n.y, n.z], k * 3);
+    deckNormal(o, tArr[k], sArr[k], -1, n);
+    botN.set([n.x, n.y, n.z], k * 3);
   }
   const topIdx: number[] = [];
   const row = NC + 1;
@@ -353,12 +411,15 @@ function buildGrid(o: typeof DEFAULTS): BoardGrid {
       else if (va && vb && vc && !vd) topIdx.push(a, c, b);
     }
   }
-  return { topPos, botPos, xArr, tArr, topIdx, count };
+  return { topPos, botPos, topN, botN, xArr, tArr, topIdx, count };
 }
 
 function surfaceGeometry(grid: BoardGrid, side: 1 | -1): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(side > 0 ? grid.topPos.slice() : grid.botPos.slice(), 3));
+  // Analytic normals from the height field (see deckNormal) — shading no
+  // longer depends on tessellation density.
+  g.setAttribute('normal', new THREE.BufferAttribute(side > 0 ? grid.topN.slice() : grid.botN.slice(), 3));
   if (side > 0) {
     g.setIndex(grid.topIdx);
   } else {
@@ -366,7 +427,6 @@ function surfaceGeometry(grid: BoardGrid, side: 1 | -1): THREE.BufferGeometry {
     for (let i = 0; i < grid.topIdx.length; i += 3) idx.push(grid.topIdx[i], grid.topIdx[i + 2], grid.topIdx[i + 1]);
     g.setIndex(idx);
   }
-  g.computeVertexNormals();
   return g;
 }
 
@@ -374,7 +434,9 @@ function surfaceGeometry(grid: BoardGrid, side: 1 | -1): THREE.BufferGeometry {
  *  passes `test`, lifted 0.7 mm off the deck so it reads as an inlay. */
 function patternGeometry(grid: BoardGrid, side: 1 | -1, test: RegionTest): THREE.BufferGeometry | null {
   const src = side > 0 ? grid.topPos : grid.botPos;
+  const srcN = side > 0 ? grid.topN : grid.botN;
   const pos: number[] = [];
+  const nor: number[] = [];
   const lift = side * 0.0007;
   for (let i = 0; i < grid.topIdx.length; i += 3) {
     const [a, b, c] = [grid.topIdx[i], grid.topIdx[i + 1], grid.topIdx[i + 2]];
@@ -382,12 +444,15 @@ function patternGeometry(grid: BoardGrid, side: 1 | -1, test: RegionTest): THREE
     const ct = (grid.tArr[a] + grid.tArr[b] + grid.tArr[c]) / 3;
     if (!test(cx, ct)) continue;
     const order = side > 0 ? [a, b, c] : [a, c, b];
-    for (const k of order) pos.push(src[k * 3], src[k * 3 + 1] + lift, src[k * 3 + 2]);
+    for (const k of order) {
+      pos.push(src[k * 3], src[k * 3 + 1] + lift, src[k * 3 + 2]);
+      nor.push(srcN[k * 3], srcN[k * 3 + 1], srcN[k * 3 + 2]);
+    }
   }
   if (pos.length === 0) return null;
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   return g;
 }
 
@@ -397,15 +462,23 @@ function patternGeometry(grid: BoardGrid, side: 1 | -1, test: RegionTest): THREE
 function stripGeometry(o: typeof DEFAULTS, side: 1 | -1, x0: number, x1: number): THREE.BufferGeometry | null {
   const NL = o.segments[0];
   const pos: number[] = [];
+  const nor: number[] = [];
   const surfY = (x: number, t: number) => {
     const hw = Math.max(halfWidthAt(t, o), 1e-4);
     return liftAt(t) + side * ((o.thickness / 2) * thicknessFactor(t, Math.abs(x) / hw) + 0.0011);
+  };
+  const nVec = new THREE.Vector3();
+  const surfN = (x: number, t: number): number[] => {
+    const hw = Math.max(halfWidthAt(t, o), 1e-4);
+    deckNormal(o, t, x / hw, side, nVec);
+    return [nVec.x, nVec.y, nVec.z];
   };
   // Per row the stripe band [x0, x1] is clipped by the outline, and by the
   // swallowtail notch gap (-nh, nh) once it opens: a band crossing the gap
   // continues as two prong bands ('left' / 'right'), a band inside the gap
   // ends. Runs connect only within the same segment key.
-  let prev = new Map<string, [number[], number[]]>();
+  type End = { p: number[]; n: number[] };
+  let prev = new Map<string, [End, End]>();
   for (let i = 0; i <= NL; i++) {
     const t = rowT(i / NL);
     const hw = halfWidthAt(t, o);
@@ -420,14 +493,15 @@ function stripGeometry(o: typeof DEFAULTS, side: 1 | -1, x0: number, x1: number)
       }
     }
     const z = t * o.length - o.length / 2;
-    const next = new Map<string, [number[], number[]]>();
+    const next = new Map<string, [End, End]>();
     for (const [key, [sx0, sx1]] of segs) {
-      const L: number[] = [sx0, surfY(sx0, t), z], R: number[] = [sx1, surfY(sx1, t), z];
+      const L: End = { p: [sx0, surfY(sx0, t), z], n: surfN(sx0, t) };
+      const R: End = { p: [sx1, surfY(sx1, t), z], n: surfN(sx1, t) };
       const p = prev.get(key);
       if (p) {
         const [pL, pR] = p;
-        if (side > 0) pos.push(...pL, ...L, ...pR, ...pR, ...L, ...R);
-        else pos.push(...pL, ...pR, ...L, ...pR, ...R, ...L);
+        const quad = side > 0 ? [pL, L, pR, pR, L, R] : [pL, pR, L, pR, R, L];
+        for (const e of quad) { pos.push(...e.p); nor.push(...e.n); }
       }
       next.set(key, [L, R]);
     }
@@ -436,7 +510,7 @@ function stripGeometry(o: typeof DEFAULTS, side: 1 | -1, x0: number, x1: number)
   if (pos.length === 0) return null;
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   return g;
 }
 
