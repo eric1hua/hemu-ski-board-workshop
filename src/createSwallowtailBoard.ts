@@ -79,9 +79,9 @@ export const GAME_BOARD_LENGTH = 1.7;
 
 const DEFAULTS: Required<SwallowtailBoardOptions> = {
   length: GAME_BOARD_LENGTH,
-  noseWidth: 0.352,
-  waistWidth: 0.293,
-  tailWidth: 0.308,
+  noseWidth: 0.478,
+  waistWidth: 0.398,
+  tailWidth: 0.418,
   thickness: 0.009,
   notchDepth: 0.22,
   topsheetColor: '#f2f2f0',
@@ -101,13 +101,17 @@ const DEFAULTS: Required<SwallowtailBoardOptions> = {
 // ---------------------------------------------------------------------------
 // Shape profile. t = 0 at the nose tip, 1 at the tail end.
 // Half-width control points are anchored on the three width options.
-// WIDTH RULE (user, 2026-11-03, REVISED same day): use the RED reference
-// board's own proportions. Its pixel-scanned aspect is length/maxWidth
-// = 4.83, so at the game's 1.70 m the widths are 352 / 293 / 312. This
-// supersedes the earlier boot-containment sizing (560 wide): her boots
-// (0.412 long, projecting ~0.45 across) now overhang the stance widths
-// (308 / 295) by ~7 cm a side, exactly as real boots overhang a real
-// Dart — the user chose the red board's shape over containment.
+// WIDTH RULE (user, 2026-11-03, CORRECTED at v31): use the RED reference
+// board's own proportions AS THEY MEASURE IN THE USER'S IMAGE. A fresh
+// pixel scan of that image (red bbox 865 px long x 243 px max width)
+// gives aspect length/maxWidth = 3.56, so at the game's 1.70 m the widths
+// are 478 / 398 / 418. The 4.83 aspect used in v29-v30 could NOT be
+// reproduced from the image (it would need a 1174 px length inside an
+// 880 px tall file) and left the board 26% too narrow; the normalised
+// OUTLINE/NOTCH_GAP profiles were verified correct and are unchanged.
+// Her boots (0.412 long, projecting ~0.45 across) overhang the stance
+// widths (~0.40) by ~2.5 cm a side — the user picked this image's shape
+// over containment, and said to ignore boot overhang for this pass.
 // ---------------------------------------------------------------------------
 
 // MEASURED OUTLINE — the user ordered the red reference board's shape

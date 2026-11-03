@@ -46,7 +46,7 @@ export function stateFromURL(q: URLSearchParams): UIState {
 }
 
 export const SPECS: Record<string, string> = {
-  solo_board: '燕尾粉雪单板\n长 1700 · 头 352 / 腰 293 / 尾 308 mm\n面板可换色/换图案，零贴图',
+  solo_board: '燕尾粉雪单板\n长 1700 · 最大宽 478 / 腰 398 / 尾 418 mm\n轮廓逐行扫描自红板图（长宽比 3.56），零贴图',
   solo_skis: '全山双板（一对）\n长 1700 · 132 / 105 / 118 mm · 站距 250',
   binding_board: '单板固定器（单只）\n适配游戏靴 170×330 · 内宽 190\n踝带/趾带独立可拆（右侧开关）',
   binding_skis: '双板固定器（单只）\n适配鞋底 340 · 站高 35 · 刹车宽 145',
